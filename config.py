@@ -21,14 +21,11 @@ class Config:
     # Render utilise postgres://, mais SQLAlchemy 1.4+ requiert postgresql://
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    # Utiliser psycopg (v3) au lieu de psycopg2 pour PostgreSQL
-    if database_url.startswith('postgresql://') and 'psycopg2' not in database_url:
-        # Ajouter le driver psycopg si ce n'est pas déjà spécifié
-        if '?' in database_url:
-            database_url += '&'
-        else:
-            database_url += '?'
-        # Ne pas spécifier de driver, SQLAlchemy utilisera celui disponible
+    # Forcer l'utilisation de psycopg (v3) au lieu de psycopg2
+    if database_url.startswith('postgresql://'):
+        # Remplacer postgresql:// par postgresql+psycopg://
+        if '+psycopg' not in database_url and '+psycopg2' not in database_url:
+            database_url = database_url.replace('postgresql://', 'postgresql+psycopg://', 1)
     SQLALCHEMY_DATABASE_URI = database_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
