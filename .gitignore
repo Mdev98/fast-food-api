@@ -1,0 +1,17 @@
+fastfood.db
+*.pyc
+__pycache__/
+venv/
+.env
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+.DS_Store
+.vscode/
+.idea/
+DEPLOY_RENDER.md
+QUICK_DEPLOY.md

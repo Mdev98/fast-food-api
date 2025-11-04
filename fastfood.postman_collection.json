@@ -1,0 +1,451 @@
+{
+  "info": {
+    "name": "Fast-Food API - Planète Kebab & MamaPizza",
+    "description": "Collection Postman pour tester l'API Fast-Food avec deux marques : Planète Kebab et MamaPizza",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12345"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "your_secret_key_here",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health & Info",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Vérification de la santé de l'API"
+          }
+        },
+        {
+          "name": "API Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": ["{{base_url}}"],
+              "path": [""]
+            },
+            "description": "Informations sur l'API et documentation des endpoints"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "Get All Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["products"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "brand",
+                  "value": "planete_kebab",
+                  "disabled": true
+                },
+                {
+                  "key": "category",
+                  "value": "Pizzas",
+                  "disabled": true
+                },
+                {
+                  "key": "available",
+                  "value": "true",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Liste tous les produits avec pagination et filtres optionnels"
+          }
+        },
+        {
+          "name": "Get Products by Brand - Planète Kebab",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products?brand=planete_kebab",
+              "host": ["{{base_url}}"],
+              "path": ["products"],
+              "query": [
+                {
+                  "key": "brand",
+                  "value": "planete_kebab"
+                }
+              ]
+            },
+            "description": "Filtrer les produits de la marque Planète Kebab"
+          }
+        },
+        {
+          "name": "Get Products by Brand - MamaPizza",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products?brand=mamapizza",
+              "host": ["{{base_url}}"],
+              "path": ["products"],
+              "query": [
+                {
+                  "key": "brand",
+                  "value": "mamapizza"
+                }
+              ]
+            },
+            "description": "Filtrer les produits de la marque MamaPizza"
+          }
+        },
+        {
+          "name": "Get Product by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products/1",
+              "host": ["{{base_url}}"],
+              "path": ["products", "1"]
+            },
+            "description": "Récupérer les détails d'un produit spécifique"
+          }
+        },
+        {
+          "name": "Create Product - Kebab",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kebab XXL\",\n  \"description\": \"Grand kebab avec double viande, crudités et sauce au choix\",\n  \"price\": \"9.50\",\n  \"image_url\": \"https://via.placeholder.com/300x200?text=Kebab+XXL\",\n  \"category\": \"Kebabs\",\n  \"brand\": \"planete_kebab\",\n  \"available\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/products",
+              "host": ["{{base_url}}"],
+              "path": ["products"]
+            },
+            "description": "Créer un nouveau produit Kebab"
+          }
+        },
+        {
+          "name": "Create Product - Pizza",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pizza Sicilienne\",\n  \"description\": \"Pizza avec anchois, câpres, olives noires et mozzarella\",\n  \"price\": \"12.50\",\n  \"image_url\": \"https://via.placeholder.com/300x200?text=Pizza+Sicilienne\",\n  \"category\": \"Pizzas\",\n  \"brand\": \"mamapizza\",\n  \"available\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/products",
+              "host": ["{{base_url}}"],
+              "path": ["products"]
+            },
+            "description": "Créer une nouvelle pizza"
+          }
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pizza Margherita (Modifiée)\",\n  \"price\": \"9.50\",\n  \"available\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/products/1",
+              "host": ["{{base_url}}"],
+              "path": ["products", "1"]
+            },
+            "description": "Mettre à jour un produit existant"
+          }
+        },
+        {
+          "name": "Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/products/99",
+              "host": ["{{base_url}}"],
+              "path": ["products", "99"]
+            },
+            "description": "Supprimer un produit"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Get All Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["orders"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "received",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Liste toutes les commandes avec pagination et filtres"
+          }
+        },
+        {
+          "name": "Get Orders by Status - Received",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders?status=received",
+              "host": ["{{base_url}}"],
+              "path": ["orders"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "received"
+                }
+              ]
+            },
+            "description": "Filtrer les commandes par statut 'received'"
+          }
+        },
+        {
+          "name": "Get Order by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders/1",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "1"]
+            },
+            "description": "Récupérer les détails d'une commande"
+          }
+        },
+        {
+          "name": "Create Order - Simple",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_name\": \"Marie Dupont\",\n  \"mobile\": \"+33612345678\",\n  \"address\": \"15 Avenue des Champs-Élysées, 75008 Paris\",\n  \"details\": \"Sans oignons, avec supplément piment\",\n  \"items\": [\n    {\n      \"product_id\": 1,\n      \"quantity\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": ["{{base_url}}"],
+              "path": ["orders"]
+            },
+            "description": "Créer une commande simple avec un seul produit et des préférences"
+          }
+        },
+        {
+          "name": "Create Order - Multiple Items",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_name\": \"Jean Martin\",\n  \"mobile\": \"+33687654321\",\n  \"address\": \"42 Rue de la République, 69002 Lyon\",\n  \"details\": \"Pizza bien cuite, kebab sans tomates, boissons fraîches\",\n  \"items\": [\n    {\n      \"product_id\": 1,\n      \"quantity\": 2\n    },\n    {\n      \"product_id\": 3,\n      \"quantity\": 1\n    },\n    {\n      \"product_id\": 6,\n      \"quantity\": 3\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": ["{{base_url}}"],
+              "path": ["orders"]
+            },
+            "description": "Créer une commande avec plusieurs produits et des instructions spéciales"
+          }
+        },
+        {
+          "name": "Update Order Status - Prepared",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"prepared\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/1",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "1"]
+            },
+            "description": "Mettre à jour le statut d'une commande en 'prepared'"
+          }
+        },
+        {
+          "name": "Update Order Status - Delivered",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"delivered\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/1",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "1"]
+            },
+            "description": "Mettre à jour le statut d'une commande en 'delivered'"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Clear Cache",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/cache/clear",
+              "host": ["{{base_url}}"],
+              "path": ["cache", "clear"]
+            },
+            "description": "Vider tout le cache de l'application"
+          }
+        }
+      ]
+    }
+  ]
+}
