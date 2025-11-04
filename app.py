@@ -52,10 +52,63 @@ def create_app(config_name=None):
     init_cache(app)
     CORS(app, origins=app.config.get('CORS_ORIGINS', '*'))
     
-    # Créer les tables de base de données
+    # Créer les tables de base de données et initialiser avec des données
     with app.app_context():
         db.create_all()
         logger.info("Base de données initialisée")
+        
+        # En production, initialiser avec des données de base si la DB est vide
+        if config_name == 'production':
+            from models import Product, BrandEnum
+            try:
+                # Vérifier si des produits existent déjà
+                existing_products = Product.query.count()
+                if existing_products == 0:
+                    logger.info("📦 Initialisation des données de production...")
+                    
+                    # Produits Planète Kebab
+                    kebab_products = [
+                        Product(name='Kebab Classique', description='Kebab avec viande, salade, tomate, oignon', 
+                                price=6.50, category='Kebabs', brand=BrandEnum.PLANETE_KEBAB, available=True),
+                        Product(name='Kebab Complet', description='Kebab avec frites et sauce au choix', 
+                                price=8.00, category='Kebabs', brand=BrandEnum.PLANETE_KEBAB, available=True),
+                        Product(name='Tacos Poulet', description='Tacos garni de poulet, frites et sauce fromagère', 
+                                price=7.50, category='Tacos', brand=BrandEnum.PLANETE_KEBAB, available=True),
+                        Product(name='Assiette Kebab', description='Viande kebab servie avec frites et salade', 
+                                price=9.00, category='Assiettes', brand=BrandEnum.PLANETE_KEBAB, available=True),
+                        Product(name='Coca-Cola', description='Boisson gazeuse 33cl', 
+                                price=2.00, category='Boissons', brand=BrandEnum.PLANETE_KEBAB, available=True),
+                    ]
+                    
+                    # Produits MamaPizza
+                    pizza_products = [
+                        Product(name='Pizza Margherita', description='Sauce tomate, mozzarella, basilic', 
+                                price=9.00, category='Pizzas', brand=BrandEnum.MAMAPIZZA, available=True),
+                        Product(name='Pizza Reine', description='Sauce tomate, mozzarella, jambon, champignons', 
+                                price=11.00, category='Pizzas', brand=BrandEnum.MAMAPIZZA, available=True),
+                        Product(name='Pizza 4 Fromages', description='Mozzarella, gorgonzola, chèvre, emmental', 
+                                price=12.00, category='Pizzas', brand=BrandEnum.MAMAPIZZA, available=True),
+                        Product(name='Pizza Calzone', description='Pizza pliée garnie de jambon, champignons et mozzarella', 
+                                price=11.50, category='Pizzas', brand=BrandEnum.MAMAPIZZA, available=True),
+                        Product(name='Tiramisu', description='Dessert italien au café et mascarpone', 
+                                price=5.00, category='Desserts', brand=BrandEnum.MAMAPIZZA, available=True),
+                        Product(name='Salade César', description='Salade verte, poulet, parmesan, croûtons', 
+                                price=8.00, category='Salades', brand=BrandEnum.MAMAPIZZA, available=True),
+                        Product(name='Limonade', description='Boisson rafraîchissante 33cl', 
+                                price=2.50, category='Boissons', brand=BrandEnum.MAMAPIZZA, available=True),
+                    ]
+                    
+                    # Ajouter tous les produits
+                    for product in kebab_products + pizza_products:
+                        db.session.add(product)
+                    
+                    db.session.commit()
+                    logger.info(f"✅ {len(kebab_products) + len(pizza_products)} produits initialisés!")
+                else:
+                    logger.info(f"ℹ️  Base de données contient déjà {existing_products} produits")
+            except Exception as e:
+                logger.error(f"❌ Erreur lors de l'initialisation des données: {str(e)}")
+                db.session.rollback()
     
     # Hook before_request pour logger les requêtes
     @app.before_request
