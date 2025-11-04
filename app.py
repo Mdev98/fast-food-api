@@ -187,9 +187,11 @@ def create_app(config_name=None):
     return app
 
 
+# Créer l'instance de l'application pour Gunicorn
+app = create_app()
+
 # Point d'entrée pour le mode développement
 if __name__ == '__main__':
-    app = create_app()
     app.run(
         host='0.0.0.0',
         port=5001,
