@@ -532,11 +532,21 @@ def create_product_with_image():
                 from flask import current_app
                 import requests
                 from io import BytesIO
+                import re
                 
                 # Initialiser Cloudinary
                 if not init_cloudinary(current_app):
                     logger.warning("Cloudinary non configuré, création sans image")
                 else:
+                    # Convertir les URLs Google Drive au format direct
+                    if 'drive.google.com' in external_image_url:
+                        # Extraire l'ID du fichier
+                        match = re.search(r'/d/([a-zA-Z0-9_-]+)', external_image_url)
+                        if match:
+                            file_id = match.group(1)
+                            external_image_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                            logger.info(f"URL Google Drive convertie: {external_image_url}")
+                    
                     # Télécharger l'image depuis l'URL externe
                     logger.info(f"Téléchargement image depuis: {external_image_url}")
                     
