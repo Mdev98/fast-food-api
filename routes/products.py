@@ -540,11 +540,15 @@ def create_product_with_image():
                 else:
                     # Convertir les URLs Google Drive au format direct
                     if 'drive.google.com' in external_image_url:
-                        # Extraire l'ID du fichier
+                        # Extraire l'ID du fichier depuis différents formats possibles
                         match = re.search(r'/d/([a-zA-Z0-9_-]+)', external_image_url)
+                        if not match:
+                            match = re.search(r'id=([a-zA-Z0-9_-]+)', external_image_url)
+                        
                         if match:
                             file_id = match.group(1)
-                            external_image_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                            # Utiliser le format de téléchargement direct (plus fiable)
+                            external_image_url = f"https://drive.google.com/uc?id={file_id}&export=download"
                             logger.info(f"URL Google Drive convertie: {external_image_url}")
                     
                     # Télécharger l'image depuis l'URL externe
