@@ -54,6 +54,11 @@ class Config:
     RATELIMIT_ENABLED = os.getenv('RATELIMIT_ENABLED', 'false').lower() == 'true'
     RATELIMIT_DEFAULT = os.getenv('RATELIMIT_DEFAULT', '100/hour')
     
+    # Cloudinary (Image Management)
+    CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME', '')
+    CLOUDINARY_API_KEY = os.getenv('CLOUDINARY_API_KEY', '')
+    CLOUDINARY_API_SECRET = os.getenv('CLOUDINARY_API_SECRET', '')
+    
     @staticmethod
     def init_app(app):
         """Initialisation spécifique de l'application"""

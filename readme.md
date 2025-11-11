@@ -10,6 +10,7 @@ API REST complète pour la gestion d'une chaîne de fast-food avec deux marques 
 - [Configuration](#️-configuration)
 - [Utilisation](#-utilisation)
 - [Endpoints API](#-endpoints-api)
+- [Intégration Google Sheets](#-intégration-google-sheets)
 - [Tests](#-tests)
 - [Architecture du projet](#-architecture-du-projet)
 
@@ -22,7 +23,10 @@ API REST complète pour la gestion d'une chaîne de fast-food avec deux marques 
 - ✅ Filtrage par marque, catégorie et disponibilité
 - ✅ Pagination des résultats
 - ✅ Support de deux marques : Planète Kebab et MamaPizza
+- ✅ **Gestion des images via Cloudinary** (upload, suppression, optimisation automatique)
+- ✅ **Upload automatique d'images depuis URL externe** (parfait pour Google Sheets)
 - ✅ Cache automatique avec invalidation intelligente
+- ✅ **Intégration Google Sheets** via App Script pour gestion CMS
 
 ### Gestion des Commandes
 - ✅ Création de commandes avec validation automatique
@@ -166,8 +170,11 @@ Réponse attendue :
 | `GET` | `/products` | Liste tous les produits | Non |
 | `GET` | `/products/<id>` | Détails d'un produit | Non |
 | `POST` | `/products` | Créer un produit | Oui |
+| `POST` | `/products/create-with-image` | **🆕 Créer avec upload image auto** | Oui |
 | `PUT` | `/products/<id>` | Modifier un produit | Oui |
 | `DELETE` | `/products/<id>` | Supprimer un produit | Oui |
+| `POST` | `/products/upload-image` | Upload image vers Cloudinary | Oui |
+| `DELETE` | `/products/delete-image` | Supprimer image de Cloudinary | Oui |
 
 **Paramètres de filtrage (GET /products)** :
 - `brand` : planete_kebab ou mamapizza
@@ -265,6 +272,62 @@ curl "http://localhost:5000/products?brand=planete_kebab&page=1&limit=10"
 curl -X POST http://localhost:5000/cache/clear \
   -H "X-API-KEY: votre_cle_api"
 ```
+
+---
+
+## 📊 Intégration Google Sheets
+
+L'API peut être intégrée avec **Google Sheets** pour gérer vos produits directement depuis une feuille de calcul.
+
+### 🆕 Endpoint optimisé : `POST /products/create-with-image`
+
+Cet endpoint **combine 3 opérations en 1 seule requête** :
+1. ✅ Télécharge l'image depuis une URL externe (Google Drive, Imgur, etc.)
+2. ✅ Upload automatique sur Cloudinary
+3. ✅ Crée le produit avec l'URL Cloudinary optimisée
+
+**Avantages :**
+- 1 seule requête HTTP (au lieu de 2)
+- Parfait pour Google Apps Script
+- Upload automatique sans gestion manuelle
+- Image optimisée automatiquement (800x800px, CDN Cloudinary)
+
+### Exemple d'utilisation
+
+```javascript
+// Google Apps Script
+const payload = {
+  name: "Pizza Margherita",
+  description: "Pizza classique italienne",
+  price: 9.99,
+  category: "pizza",
+  brand: "mamapizza",
+  available: true,
+  image_url: "https://drive.google.com/uc?export=view&id=ABC123"  // URL externe
+};
+
+const response = UrlFetchApp.fetch("https://votre-api.com/api/products/create-with-image", {
+  method: "POST",
+  headers: {
+    "X-API-KEY": "votre_cle",
+    "Content-Type": "application/json"
+  },
+  payload: JSON.stringify(payload)
+});
+
+// Réponse : produit créé avec image_url pointant vers Cloudinary
+const result = JSON.parse(response.getContentText());
+console.log(result.product.image_url);  // https://res.cloudinary.com/...
+```
+
+### 📚 Documentation complète
+
+Consultez **[GOOGLE_SHEETS_INTEGRATION.md](./GOOGLE_SHEETS_INTEGRATION.md)** pour :
+- Configuration du script Google Sheets
+- Synchronisation bidirectionnelle automatique
+- Workflow complet (ajout, modification, suppression)
+- Gestion des images depuis Google Drive
+- Script complet prêt à l'emploi
 
 ---
 
@@ -464,11 +527,18 @@ Le système bascule automatiquement sur SimpleCache si Redis n'est pas disponibl
 
 ## 📚 Collection Postman
 
+### Collection principale
 Importez le fichier `fastfood.postman_collection.json` dans Postman pour tester facilement tous les endpoints.
 
+### Collection gestion d'images
+Importez le fichier `postman_images_collection.json` pour tester l'upload et la gestion des images.
+
 **Variables à configurer dans Postman :**
-- `base_url` : http://localhost:5000
+- `base_url` : http://localhost:5001
 - `api_key` : Votre clé API définie dans `.env`
+
+**Guides disponibles :**
+- `IMAGES_GUIDE.md` - Documentation complète de la gestion des images
 
 ---
 
