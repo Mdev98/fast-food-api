@@ -20,3 +20,7 @@ APP_SCRIPT_UPDATED.js
 EXAMPLE_USAGE.md
 GOOGLE_SHEETS_INTEGRATION.md
 TEST_NEW_ENDPOINT.md
+
+# Local image storage
+static/products/
+instance/

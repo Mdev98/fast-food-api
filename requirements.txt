@@ -6,7 +6,6 @@ marshmallow-sqlalchemy==0.29.0
 
 # Caching
 Flask-Caching==2.1.0
-redis==5.0.1
 
 # CORS
 Flask-CORS==4.0.0
@@ -26,7 +25,6 @@ Werkzeug==3.0.1
 requests==2.31.0
 
 # Image Management
-cloudinary==1.41.0
 Pillow==10.4.0
 
 # Testing

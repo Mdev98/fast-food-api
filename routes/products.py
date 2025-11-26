@@ -141,7 +141,7 @@ def create_product():
         - name: Nom du produit (requis)
         - description: Description
         - price: Prix (requis, > 0)
-        - image_url: URL de l'image
+        - image_url: URL externe de l'image OU image_base64: Données base64 de l'image
         - category: Catégorie (requis)
         - available: Disponibilité (défaut: true)
         - brand: Marque (requis: planete_kebab ou mamapizza)
@@ -151,11 +151,14 @@ def create_product():
         400: Données invalides
     """
     try:
+        from utils.image_handler import ensure_products_folder, download_and_compress, compress_from_base64
+        from flask import current_app
+        
         # Validation des données
         data = request.get_json()
         validated_data = product_schema.load(data)
         
-        # Création du produit
+        # Créer le produit d'abord pour obtenir l'ID
         product = Product(
             name=validated_data['name'],
             description=validated_data.get('description'),
@@ -167,6 +170,38 @@ def create_product():
         )
         
         db.session.add(product)
+        db.session.flush()  # Obtenir l'ID sans commit
+        
+        # Traiter l'image si fournie
+        image_url = None
+        image_base64 = data.get('image_base64')
+        
+        if image_url or image_base64:
+            ensure_products_folder()
+            
+            if image_base64:
+                # Traiter depuis base64
+                result = compress_from_base64(
+                    image_base64,
+                    product.id
+                )
+                if result:
+                    image_url = result['public_url']
+                    logger.info(f"Image base64 traitée pour produit {product.id}")
+            elif image_url and (image_url.startswith('http://') or image_url.startswith('https://')):
+                # Télécharger et traiter depuis URL externe
+                result = download_and_compress(
+                    image_url,
+                    product.id
+                )
+                if result:
+                    image_url = result['public_url']
+                    logger.info(f"Image téléchargée pour produit {product.id}")
+        
+        # Mettre à jour l'image_url du produit
+        if image_url:
+            product.image_url = image_url
+        
         db.session.commit()
         
         # Invalider le cache
@@ -181,6 +216,7 @@ def create_product():
         }), 201
         
     except ValidationError as e:
+        db.session.rollback()
         return jsonify({
             'error': 'Validation échouée',
             'message': e.messages
@@ -214,6 +250,7 @@ def update_product(product_id):
         product_id: ID du produit à modifier
         
     Body (JSON): Mêmes champs que la création (tous optionnels)
+        - image_url: URL externe de l'image OU image_base64: Données base64 de l'image
     
     Returns:
         200: Produit mis à jour
@@ -221,6 +258,9 @@ def update_product(product_id):
         400: Données invalides
     """
     try:
+        from utils.image_handler import ensure_products_folder, download_and_compress, compress_from_base64, extract_filename_from_url, delete_local_image
+        from flask import current_app
+        
         product = db.session.get(Product, product_id)
         
         if not product:
@@ -233,15 +273,60 @@ def update_product(product_id):
         data = request.get_json()
         validated_data = product_schema.load(data, partial=True)
         
-        # Mise à jour des champs
+        # Gérer l'image si fournie
+        image_base64 = data.get('image_base64')
+        image_url_provided = validated_data.get('image_url')
+        
+        if image_url_provided or image_base64:
+            # Supprimer l'ancienne image locale si elle existe
+            if product.image_url and '/static/products/' in product.image_url:
+                old_filename = extract_filename_from_url(product.image_url)
+                if old_filename:
+                    delete_local_image(old_filename)
+                    logger.info(f"Ancienne image supprimée: {old_filename}")
+            
+            ensure_products_folder()
+            
+            if image_base64:
+                # Traiter depuis base64
+                result = compress_from_base64(
+                    image_base64,
+                    product.id
+                )
+                if result:
+                    product.image_url = result['public_url']
+                    logger.info(f"Image base64 traitée pour produit {product.id}")
+            elif image_url_provided and (image_url_provided.startswith('http://') or image_url_provided.startswith('https://')):
+                # Télécharger et traiter depuis URL externe
+                result = download_and_compress(
+                    image_url_provided,
+                    product.id
+                )
+                if result:
+                    product.image_url = result['public_url']
+                    logger.info(f"Image téléchargée pour produit {product.id}")
+        else:
+            # Mise à jour des champs sans image
+            if 'name' in validated_data:
+                product.name = validated_data['name']
+            if 'description' in validated_data:
+                product.description = validated_data['description']
+            if 'price' in validated_data:
+                product.price = validated_data['price']
+            if 'category' in validated_data:
+                product.category = validated_data['category']
+            if 'available' in validated_data:
+                product.available = validated_data['available']
+            if 'brand' in validated_data:
+                product.brand = BrandEnum(validated_data['brand'])
+        
+        # Mise à jour des champs sans image
         if 'name' in validated_data:
             product.name = validated_data['name']
         if 'description' in validated_data:
             product.description = validated_data['description']
         if 'price' in validated_data:
             product.price = validated_data['price']
-        if 'image_url' in validated_data:
-            product.image_url = validated_data['image_url']
         if 'category' in validated_data:
             product.category = validated_data['category']
         if 'available' in validated_data:
@@ -334,11 +419,11 @@ def delete_product(product_id):
 @require_api_key
 def upload_product_image():
     """
-    Upload une image de produit vers Cloudinary
+    Upload une image de produit vers le stockage local
     
     Form data:
         - image: Fichier image (PNG, JPG, JPEG, GIF, WEBP, max 5MB)
-        - product_name: Nom du produit (optionnel, pour nommer l'image)
+        - product_id: ID du produit (requis)
         
     Returns:
         200: Image uploadée avec succès
@@ -346,15 +431,8 @@ def upload_product_image():
         500: Erreur serveur
     """
     try:
-        from utils.images import validate_image_file, upload_image, init_cloudinary
+        from utils.image_handler import ensure_products_folder, compress_from_base64
         from flask import current_app
-        
-        # Initialiser Cloudinary
-        if not init_cloudinary(current_app):
-            return jsonify({
-                'error': 'Service non disponible',
-                'message': 'Cloudinary n\'est pas configuré. Ajoutez les variables d\'environnement.'
-            }), 503
         
         # Vérifier qu'un fichier a été envoyé
         if 'image' not in request.files:
@@ -364,49 +442,85 @@ def upload_product_image():
             }), 400
         
         file = request.files['image']
+        product_id_str = request.form.get('product_id')
         
-        # Valider le fichier
-        is_valid, error_message = validate_image_file(file)
-        if not is_valid:
+        if not product_id_str:
             return jsonify({
-                'error': 'Fichier invalide',
-                'message': error_message
+                'error': 'Paramètre manquant',
+                'message': 'product_id est requis'
             }), 400
         
-        # Générer un public_id personnalisé si product_name est fourni
-        product_name = request.form.get('product_name', '')
-        public_id = None
-        if product_name:
-            # Nettoyer le nom pour créer un ID valide
-            import re
-            public_id = re.sub(r'[^a-z0-9_-]', '_', product_name.lower())
+        try:
+            product_id = int(product_id_str)
+        except ValueError:
+            return jsonify({
+                'error': 'Paramètre invalide',
+                'message': 'product_id doit être un nombre entier'
+            }), 400
         
-        # Upload vers Cloudinary
-        result = upload_image(
-            file_data=file,
-            folder="fast-food/products",
-            public_id=public_id
+        # Vérifier que le produit existe
+        product = db.session.get(Product, product_id)
+        if not product:
+            return jsonify({
+                'error': 'Produit non trouvé',
+                'message': f'Aucun produit avec l\'ID {product_id}'
+            }), 404
+        
+        # Valider le fichier
+        if not file or file.filename == '':
+            return jsonify({
+                'error': 'Fichier invalide',
+                'message': 'Sélectionnez un fichier image'
+            }), 400
+        
+        # Vérifier l'extension
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        if not ('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
+            return jsonify({
+                'error': 'Format invalide',
+                'message': f'Format d\'image autorisé: {allowed_extensions}'
+            }), 400
+        
+        ensure_products_folder()
+        
+        # Lire le fichier et le convertir en base64 pour utiliser compress_from_base64
+        import base64
+        file_content = file.read()
+        base64_string = base64.b64encode(file_content).decode('utf-8')
+        
+        result = compress_from_base64(
+            base64_string,
+            product_id
         )
         
         if not result:
             return jsonify({
-                'error': 'Échec upload',
-                'message': 'Impossible d\'uploader l\'image vers Cloudinary'
+                'error': 'Échec traitement',
+                'message': 'Impossible de traiter l\'image'
             }), 500
         
-        logger.info(f"Image uploadée avec succès: {result['url']}")
+        # Supprimer l'ancienne image locale si elle existe
+        from utils.image_handler import extract_filename_from_url, delete_local_image
+        if product.image_url and '/static/products/' in product.image_url:
+            old_filename = extract_filename_from_url(product.image_url)
+            if old_filename:
+                delete_local_image(old_filename)
+        
+        # Mettre à jour le produit
+        product.image_url = result['public_url']
+        db.session.commit()
+        invalidate_products_cache()
+        
+        logger.info(f"Image uploadée avec succès: {result['public_url']}")
         
         return jsonify({
             'message': 'Image uploadée avec succès',
-            'image_url': result['url'],
-            'public_id': result['public_id'],
-            'width': result['width'],
-            'height': result['height'],
-            'format': result['format'],
-            'size_bytes': result['bytes']
+            'image_url': result['public_url'],
+            'filename': result['filename']
         }), 200
         
     except Exception as e:
+        db.session.rollback()
         logger.error(f"Erreur lors de l'upload d'image: {str(e)}")
         return jsonify({
             'error': 'Erreur serveur',
@@ -418,66 +532,54 @@ def upload_product_image():
 @require_api_key
 def delete_product_image():
     """
-    Supprime une image de produit de Cloudinary
+    Supprime une image de produit du stockage local
     
     JSON body:
-        - image_url: URL complète de l'image Cloudinary
-        OU
-        - public_id: Public ID de l'image
+        - product_id: ID du produit (requis)
         
     Returns:
         200: Image supprimée
         400: Paramètres manquants
-        404: Image non trouvée
+        404: Produit non trouvé
     """
     try:
-        from utils.images import delete_image, extract_public_id_from_url, init_cloudinary
-        from flask import current_app
-        
-        # Initialiser Cloudinary
-        if not init_cloudinary(current_app):
-            return jsonify({
-                'error': 'Service non disponible',
-                'message': 'Cloudinary n\'est pas configuré'
-            }), 503
+        from utils.image_handler import extract_filename_from_url, delete_local_image
         
         data = request.get_json()
+        product_id = data.get('product_id')
         
-        # Récupérer le public_id
-        public_id = data.get('public_id')
-        image_url = data.get('image_url')
-        
-        if not public_id and not image_url:
+        if not product_id:
             return jsonify({
-                'error': 'Paramètres manquants',
-                'message': 'Fournissez "public_id" ou "image_url"'
+                'error': 'Paramètre manquant',
+                'message': 'product_id est requis'
             }), 400
         
-        # Extraire le public_id depuis l'URL si nécessaire
-        if image_url and not public_id:
-            public_id = extract_public_id_from_url(image_url)
-            if not public_id:
-                return jsonify({
-                    'error': 'URL invalide',
-                    'message': 'Impossible d\'extraire le public_id de l\'URL'
-                }), 400
-        
-        # Supprimer l'image
-        success = delete_image(public_id)
-        
-        if success:
-            logger.info(f"Image supprimée: {public_id}")
+        product = db.session.get(Product, product_id)
+        if not product:
             return jsonify({
-                'message': 'Image supprimée avec succès',
-                'public_id': public_id
-            }), 200
-        else:
-            return jsonify({
-                'error': 'Image non trouvée',
-                'message': 'L\'image n\'existe pas ou a déjà été supprimée'
+                'error': 'Produit non trouvé',
+                'message': f'Aucun produit avec l\'ID {product_id}'
             }), 404
         
+        # Supprimer l'image locale si elle existe
+        if product.image_url and '/static/products/' in product.image_url:
+            filename = extract_filename_from_url(product.image_url)
+            if filename:
+                delete_local_image(filename)
+                product.image_url = None
+                db.session.commit()
+                invalidate_products_cache()
+                logger.info(f"Image supprimée pour le produit {product_id}")
+                return jsonify({
+                    'message': 'Image supprimée avec succès'
+                }), 200
+        
+        return jsonify({
+            'message': 'Aucune image à supprimer'
+        }), 200
+        
     except Exception as e:
+        db.session.rollback()
         logger.error(f"Erreur lors de la suppression d'image: {str(e)}")
         return jsonify({
             'error': 'Erreur serveur',

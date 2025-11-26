@@ -52,7 +52,11 @@ def create_app(config_name=None):
     init_cache(app)
     CORS(app, origins=app.config.get('CORS_ORIGINS', '*'))
     
-    # Créer les tables de base de données et initialiser avec des données
+    # Initialiser le dossier des images locales
+    from utils.image_handler import ensure_products_folder
+    ensure_products_folder()
+    
+    # Configurer le servage des fichiers statiques
     with app.app_context():
         db.create_all()
         logger.info("Base de données initialisée")
