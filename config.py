@@ -43,9 +43,8 @@ class Config:
     SMS_MOCK_MODE = os.getenv('SMS_MOCK_MODE', 'true').lower() == 'true'
     
     # Cache
-    CACHE_TYPE = os.getenv('CACHE_TYPE', 'SimpleCache')  # SimpleCache ou RedisCache
+    CACHE_TYPE = 'SimpleCache'
     CACHE_DEFAULT_TIMEOUT = int(os.getenv('CACHE_TTL', '600'))
-    CACHE_REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
     
     # CORS
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*')

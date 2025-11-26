@@ -17,32 +17,13 @@ def init_cache(app):
     Args:
         app: Instance Flask de l'application
     """
-    try:
-        # Configuration du cache basée sur les variables d'environnement
-        cache_config = {
-            'CACHE_TYPE': app.config.get('CACHE_TYPE', 'SimpleCache'),
-            'CACHE_DEFAULT_TIMEOUT': app.config.get('CACHE_DEFAULT_TIMEOUT', 600)
-        }
-        
-        # Si Redis est configuré, ajouter l'URL
-        if app.config.get('CACHE_TYPE') == 'RedisCache':
-            redis_url = app.config.get('CACHE_REDIS_URL')
-            if redis_url:
-                cache_config['CACHE_REDIS_URL'] = redis_url
-                logger.info(f"Cache Redis configuré: {redis_url}")
-            else:
-                # Fallback sur SimpleCache si Redis n'est pas disponible
-                cache_config['CACHE_TYPE'] = 'SimpleCache'
-                logger.warning("Redis URL non configurée, utilisation de SimpleCache")
-        
-        cache.init_app(app, config=cache_config)
-        logger.info(f"Cache initialisé: {cache_config['CACHE_TYPE']}")
-        
-    except Exception as e:
-        logger.error(f"Erreur lors de l'initialisation du cache: {str(e)}")
-        # En cas d'erreur, fallback sur SimpleCache
-        cache.init_app(app, config={'CACHE_TYPE': 'SimpleCache'})
-        logger.info("Fallback: SimpleCache activé")
+    cache_config = {
+        'CACHE_TYPE': app.config.get('CACHE_TYPE', 'SimpleCache'),
+        'CACHE_DEFAULT_TIMEOUT': app.config.get('CACHE_DEFAULT_TIMEOUT', 600)
+    }
+    
+    cache.init_app(app, config=cache_config)
+    logger.info(f"Cache initialisé: {cache_config['CACHE_TYPE']}")
 
 
 def clear_cache(key_prefix: str | None = None):
