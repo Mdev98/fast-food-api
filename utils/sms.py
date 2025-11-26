@@ -156,7 +156,7 @@ def send_sms_intech(
 def send_order_confirmation_sms(
     order_id: int,
     customer_mobile: str,
-    total: float,
+    total: int,  # Amount in FCFA (integer)
     address: str,
     mock_mode: bool = True
 ) -> bool:
@@ -166,7 +166,7 @@ def send_order_confirmation_sms(
     Args:
         order_id: ID de la commande
         customer_mobile: Numéro du client
-        total: Montant total de la commande
+        total: Montant total de la commande en FCFA (entier)
         address: Adresse de livraison
         mock_mode: Si True, simule l'envoi (mode développement)
         
@@ -188,7 +188,7 @@ def send_manager_notification_sms(
     customer_name: str,
     customer_mobile: str,
     address: str,
-    total: float,
+    total: int,  # Amount in FCFA (integer)
     items_summary: str,
     details: str,
     manager_mobile: str,
@@ -202,7 +202,7 @@ def send_manager_notification_sms(
         customer_name: Nom du client
         customer_mobile: Numéro du client
         address: Adresse de livraison
-        total: Montant total de la commande
+        total: Montant total de la commande en FCFA (entier)
         items_summary: Résumé des articles commandés
         details: Détails supplémentaires de la commande
         manager_mobile: Numéro du gérant

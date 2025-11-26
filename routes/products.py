@@ -6,14 +6,51 @@ from flask import Blueprint, request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
-from models import db, Product, BrandEnum
+from models import db, Product, BrandEnum, Country
 from schemas import product_schema, products_schema, pagination_schema
 from utils.security import require_api_key, validate_json_content_type
 from utils.cache import cache, invalidate_products_cache
+from sqlalchemy import func, and_
 
 logger = logging.getLogger(__name__)
 
 products_bp = Blueprint('products', __name__, url_prefix='/products')
+
+@products_bp.route('/countries', methods=['GET'])
+def get_available_countries():
+    """
+    Récupère les pays disponibles pour les filtres
+    Utile pour le frontend (dropdown, options, etc.)
+    
+    Returns:
+        200: Liste des pays avec codes et noms
+    """
+    try:
+        countries = Country.query.all()
+        
+        if not countries:
+            return jsonify({
+                'success': False,
+                'message': 'Aucun pays enregistré',
+                'data': []
+            }), 200
+        
+        result = [country.to_dict() for country in countries]
+        
+        return jsonify({
+            'success': True,
+            'data': result,
+            'count': len(result)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des pays: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Erreur serveur',
+            'message': 'Une erreur est survenue'
+        }), 500
+
 
 
 @products_bp.route('', methods=['GET'])
@@ -26,6 +63,7 @@ def get_products():
         - brand: Filtrer par marque (planete_kebab ou mamapizza)
         - category: Filtrer par catégorie
         - available: Filtrer par disponibilité (true/false)
+        - country: Filtrer par code pays (SN, CI, ML, BF, etc.)
         - page: Numéro de page (défaut: 1)
         - limit: Nombre d'éléments par page (défaut: 10, max: 100)
     
@@ -68,6 +106,24 @@ def get_products():
         if available_filter:
             is_available = available_filter.lower() == 'true'
             query = query.filter(Product.available == is_available)
+        
+        # Filtrage par pays (optionnel)
+        # MODIFICATION: Utiliser json_extract pour SQLite compatible
+        country_filter = request.args.get('country')
+        if country_filter:
+            # Valider que le code pays existe
+            country = Country.query.filter_by(code=country_filter).first()
+            if not country:
+                return jsonify({
+                    'error': 'Pays invalide',
+                    'message': f'Le code pays {country_filter} n\'existe pas'
+                }), 400
+            
+            # Filtrer les produits disponibles dans ce pays
+            # SQLite: utiliser LIKE pour chercher dans le JSON
+            query = query.filter(
+                Product.available_in_countries.like(f'%"{country_filter}"%')
+            )
         
         # Tri par nom
         query = query.order_by(Product.name)
@@ -166,7 +222,9 @@ def create_product():
             image_url=validated_data.get('image_url'),
             category=validated_data['category'],
             available=validated_data.get('available', True),
-            brand=BrandEnum(validated_data['brand'])
+            brand=BrandEnum(validated_data['brand']),
+            # MODIFICATION: Ajouter le champ available_in_countries
+            available_in_countries=validated_data.get('available_in_countries', ["SN"])
         )
         
         db.session.add(product)
@@ -319,6 +377,9 @@ def update_product(product_id):
                 product.available = validated_data['available']
             if 'brand' in validated_data:
                 product.brand = BrandEnum(validated_data['brand'])
+            # MODIFICATION: Ajouter cette ligne
+            if 'available_in_countries' in validated_data:
+                product.available_in_countries = validated_data['available_in_countries']
         
         # Mise à jour des champs sans image
         if 'name' in validated_data:
@@ -741,6 +802,49 @@ def create_product_with_image():
     except Exception as e:
         db.session.rollback()
         logger.error(f"Erreur lors de la création du produit avec image: {str(e)}")
+        return jsonify({
+            'error': 'Erreur serveur',
+            'message': 'Une erreur est survenue'
+        }), 500
+
+@products_bp.route('/<int:product_id>/countries', methods=['GET'])
+def get_product_countries(product_id):
+    """
+    Récupère les informations détaillées des pays où un produit est disponible
+    
+    Args:
+        product_id: ID du produit
+        
+    Returns:
+        200: Détails des pays du produit
+        404: Produit non trouvé
+    """
+    try:
+        product = db.session.get(Product, product_id)
+        
+        if not product:
+            return jsonify({
+                'error': 'Produit non trouvé',
+                'message': f'Aucun produit avec l\'ID {product_id}'
+            }), 404
+        
+        # Récupérer les pays correspondant aux codes
+        country_codes = product.available_in_countries or ["SN"]
+        countries = Country.query.filter(
+            Country.code.in_(country_codes)
+        ).all()
+        
+        result = [country.to_dict() for country in countries]
+        
+        return jsonify({
+            'product_id': product_id,
+            'product_name': product.name,
+            'countries': result,
+            'country_codes': country_codes
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des pays du produit: {str(e)}")
         return jsonify({
             'error': 'Erreur serveur',
             'message': 'Une erreur est survenue'

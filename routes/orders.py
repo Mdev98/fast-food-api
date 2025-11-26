@@ -2,7 +2,6 @@
 Routes pour la gestion des commandes
 """
 import logging
-from decimal import Decimal
 from flask import Blueprint, request, jsonify, current_app
 from marshmallow import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
@@ -12,6 +11,7 @@ from schemas import order_create_schema, order_schema, orders_schema, order_upda
 from utils.security import require_api_key, validate_json_content_type
 from utils.cache import cache, invalidate_orders_cache
 from utils.sms import send_order_confirmation_sms, send_manager_notification_sms
+from utils.currency import format_fcfa
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ orders_bp = Blueprint('orders', __name__, url_prefix='/orders')
 
 def calculate_order_items(items_data):
     """
-    Calcule et valide les items d'une commande
+    Calcule et valide les items d'une commande (montants en FCFA - entiers)
     
     Args:
         items_data: Liste des items avec product_id et quantity
@@ -32,7 +32,7 @@ def calculate_order_items(items_data):
         ValueError: Si un produit n'existe pas ou n'est pas disponible
     """
     items = []
-    total = Decimal('0.00')
+    total = 0  # Total in FCFA (integer)
     
     for item in items_data:
         product_id = item.get('product_id')
@@ -47,8 +47,8 @@ def calculate_order_items(items_data):
         if not product.available:
             raise ValueError(f"Le produit '{product.name}' n'est pas disponible")
         
-        # Calculer le sous-total
-        unit_price = Decimal(str(product.price))
+        # Calculer le sous-total (en FCFA, entiers)
+        unit_price = product.price  # Already an integer
         subtotal = unit_price * quantity
         total += subtotal
         
@@ -56,9 +56,9 @@ def calculate_order_items(items_data):
         items.append({
             'product_id': product.id,
             'name': product.name,
-            'unit_price': float(unit_price),
+            'unit_price': unit_price,  # FCFA integer
             'quantity': quantity,
-            'subtotal': float(subtotal)
+            'subtotal': subtotal  # FCFA integer
         })
     
     return items, total
@@ -113,7 +113,7 @@ def create_order():
         invalidate_orders_cache()
         
         logger.info(
-            f"Commande créée: #{order.id} - {order.customer_name} - {float(order.total)}€"
+            f"Commande créée: #{order.id} - {order.customer_name} - {format_fcfa(order.total)}"
         )
         
         # Envoyer les SMS de notification
@@ -132,7 +132,7 @@ def create_order():
             customer_name=order.customer_name,
             customer_mobile=order.mobile,
             address=order.address,
-            total=float(order.total),
+            total=order.total,  # Pass as integer FCFA
             items_summary=items_summary,
             details=order.details or "",
             manager_mobile=manager_mobile,
@@ -143,7 +143,7 @@ def create_order():
         send_order_confirmation_sms(
             order_id=order.id,
             customer_mobile=order.mobile,
-            total=float(order.total),
+            total=order.total,  # Pass as integer FCFA
             address=order.address,
             mock_mode=mock_mode
         )

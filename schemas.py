@@ -39,11 +39,9 @@ class ProductSchema(Schema):
     id = fields.Int(dump_only=True)
     name = fields.Str(required=True, validate=validate.Length(min=1, max=100))
     description = fields.Str(allow_none=True)
-    price = fields.Decimal(
+    price = fields.Int(
         required=True,
-        places=2,
-        as_string=True,
-        validate=validate.Range(min=0.01, error="Le prix doit être positif")
+        validate=validate.Range(min=1, error="Le prix (FCFA) doit être positif")
     )
     image_url = fields.Str(allow_none=True, validate=validate.Length(max=500))
     category = fields.Str(
@@ -54,6 +52,10 @@ class ProductSchema(Schema):
     brand = EnumField(
         BrandEnum,
         required=True
+    )
+    available_in_countries = fields.List(
+        fields.Str(validate=validate.Length(equal=2)),
+        load_default=["SN"]
     )
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
@@ -69,7 +71,7 @@ class ProductSchema(Schema):
     
     @validates('price')
     def validate_price(self, value):
-        """Valide que le prix est positif"""
+        """Valide que le prix (FCFA) est positif"""
         if value <= 0:
             raise ValidationError("Le prix doit être supérieur à 0")
 
@@ -80,12 +82,12 @@ class OrderItemSchema(Schema):
     """
     product_id = fields.Int(required=True)
     name = fields.Str(dump_only=True)
-    unit_price = fields.Decimal(places=2, as_string=True, dump_only=True)
+    unit_price = fields.Int(dump_only=True)  # Price in FCFA (integer)
     quantity = fields.Int(
         required=True,
         validate=validate.Range(min=1, error="La quantité doit être au moins 1")
     )
-    subtotal = fields.Decimal(places=2, as_string=True, dump_only=True)
+    subtotal = fields.Int(dump_only=True)  # Subtotal in FCFA (integer)
 
 
 class OrderCreateSchema(Schema):
@@ -139,7 +141,7 @@ class OrderSchema(Schema):
     address = fields.Str(required=True)
     details = fields.Str(allow_none=True)
     items = fields.List(fields.Nested(OrderItemSchema))
-    total = fields.Decimal(places=2, as_string=True, dump_only=True)
+    total = fields.Int(dump_only=True)  # Total in FCFA (integer)
     status = EnumField(OrderStatusEnum)
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
